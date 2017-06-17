@@ -55,7 +55,31 @@ void look_for_sym(char * str, char c, char * fileName)
         strcpy(fileName, fname);
     }
 }
+void input_redir(char inRedirect[256])
+{
+    int fd;
+    if(strlen(inRedirect) > 0)
+    {
+	if((fd = open(inRedirect, O_RDONLY)) == -1  )
+	    error("open before input redirection");
+	if((dup2(fd,0)) == -1)
+	    error("dup2 input redirection");
+	close(fd);	    
+    }
+}
+void output_redir(char outRedirect[256])
+{
+    int fd;
+    if(strlen(outRedirect) > 0)
+    {
+	if((fd = open(outRedirect, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1)
+	    error("open before output redirection");
+	if((dup2(fd,1)) == -1)
+	    error("dup2 output redirection");
+    close(fd);
+    } 
 
+}
 int main(int argc, char * argv[])
 {
     char command[1024];
@@ -63,7 +87,6 @@ int main(int argc, char * argv[])
     char inRedirect[256] = "";
     char outRedirect[256] = "";
     pid_t p;
-    int fd;    
     
     while(1)
     {
@@ -77,22 +100,8 @@ int main(int argc, char * argv[])
         {
 	    case 0:
 	        // do child stuff
-		if(strlen(inRedirect) > 0)
-		{
-		    if((fd = open(inRedirect, O_RDONLY)) == -1  )
-			error("open before input redirection");
-		    if((dup2(fd,0)) == -1)
-			error("dup2 input redirection");
-		    close(fd);	    
-		}
-		if(strlen(outRedirect) > 0)
-		{
-		    if((fd = open(outRedirect, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1)
-			error("open before output redirection");
-		    if((dup2(fd,1)) == -1)
-			error("dup2 output redirection");
-		    close(fd);
-		} 
+                input_redir(inRedirect);
+		output_redir(outRedirect);
 	        execvp(command, newargv);
 	        break;
 	    default:
