@@ -95,14 +95,18 @@ int main(int argc, char * argv[])
         look_for_sym(command, '<', inRedirect);
         look_for_sym(command, '>', outRedirect);
         parse_command(command, newargv);
+        
+        if((p = vfork()) == -1 )
+	    error("fork");        
     
-        switch( p = vfork() )
+        switch( p )
         {
 	    case 0:
 	        // do child stuff
                 input_redir(inRedirect);
 		output_redir(outRedirect);
 	        execvp(command, newargv);
+		error("exec");
 	        break;
 	    default:
 	        // do parent stuff
