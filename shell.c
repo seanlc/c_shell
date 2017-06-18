@@ -135,14 +135,14 @@ void input_redir(char inRedirect[256])
 void output_redir(char outRedirect[256])
 {
     int fd;
-    if(strlen(outRedirect) > 0)
+    if(strlen(outRedirect)> 0)
     {
-	if((fd = open(outRedirect, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1)
+        if((fd = open(outRedirect, O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1)
 	    error("open before output redirection");
-	if((dup2(fd,1)) == -1)
+        if((dup2(fd,1)) == -1)
 	    error("dup2 output redirection");
-    close(fd);
-    } 
+        close(fd);
+    }
 
 }
 int main(int argc, char * argv[])
@@ -151,7 +151,9 @@ int main(int argc, char * argv[])
     char * newargv[ARG_MAX];
     char inRedirect[256] = "";
     char outRedirect[256] = "";
-    pid_t p;
+    int pipefd[2];
+    int in = 0;
+    int i;
     
     while(1)
     {
@@ -162,32 +164,23 @@ int main(int argc, char * argv[])
         
         while( look_for_pipe(command) == 1)
 		;
-
-	// move after fork
-        parse_command(command, newargv);
         
 	cmds[0] = command;
-        printf("before fork\n");
-        print_cmds();
-
-        if((p = vfork()) == -1 )
-	    error("fork");        
-    
-        switch( p )
-        {
-	    case 0:
-	        // do child stuff
-                input_redir(inRedirect);
-		output_redir(outRedirect);
-	        execvp(command, newargv);
-		error("exec");
-	        break;
-	    default:
-	        // do parent stuff
-                waitpid(-1, NULL, 0);
-		strcpy(inRedirect, "");
-		strcpy(outRedirect, "");
-        } 
+        if(strlen(inRedirect) > 0)
+	    in = open(inRedirect, O_RDONLY);
+	for(i = 0; i < num_proc -1; ++i)
+	{
+	    pipe(pipefd);
+	    make_proc(in, pipefd[1], cmds[i]);
+	    close(pipefd[1]);
+	    in = pipefd[0];
+	}
+	if(in != 0)
+	    dup2(in, 0);
+        output_redir(outRedirect); 	
+	init_argv(newargv);
+	parse_command(cmds[i], newargv);
+	execvp(newargv[0], newargv);
     }
 
     return 0;
