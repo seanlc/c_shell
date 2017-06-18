@@ -8,11 +8,20 @@
 #include <fcntl.h>
 
 #define ARG_MAX 20
+#define MAX_CMDS 10
+
+char * cmds[MAX_CMDS];
+int num_proc = 1;
 
 void error(char * msg)
 {
     perror(msg);
     exit(-1);
+}
+void init_cmds()
+{
+    for(int i = 0; i < MAX_CMDS; ++i)
+	cmds[i] = NULL;
 }
 
 void init_argv(char * newargv[])
@@ -21,6 +30,13 @@ void init_argv(char * newargv[])
 	newargv[i] = NULL;
 }
 
+void print_cmds()
+{
+    printf("value of cmds: \n");
+    for(int i = 0; cmds[i] != NULL; ++i)
+	printf("cmds[%d] : %s\n", i, cmds[i]);
+    printf("value of num_proc: %d\n", num_proc);
+}
 void parse_command(char * command, char * newargv[])
 {
     char * tok = NULL;
@@ -38,6 +54,23 @@ void get_comm(char * buf)
     printf("#");
     fgets(buf, 255, stdin);
     buf[strcspn(buf,"\n")] = 0;
+}
+
+int look_for_pipe(char * cmd)
+{
+    char * copyOfCmd = NULL;
+    char * pipeLoc = NULL;
+    int cmdlen = 0;
+    if( (pipeLoc = strchr(cmd, '|')) != NULL  )
+    {
+	copyOfCmd = (char *)malloc(strlen(pipeLoc + 1)+1);
+        strcpy(copyOfCmd, pipeLoc + 1);
+        cmds[num_proc++] = strtok(copyOfCmd, "|<>&");
+	cmdlen = strlen(copyOfCmd);
+	strcpy(pipeLoc, pipeLoc + cmdlen + 1);
+	return 1;
+    }
+    return 0;
 }
 
 void look_for_sym(char * str, char c, char * fileName)
@@ -94,8 +127,17 @@ int main(int argc, char * argv[])
         get_comm(command);
         look_for_sym(command, '<', inRedirect);
         look_for_sym(command, '>', outRedirect);
+        
+        while( look_for_pipe(command) == 1)
+		;
+
+	// move after fork
         parse_command(command, newargv);
         
+	cmds[0] = command;
+        printf("before fork\n");
+        print_cmds();
+
         if((p = vfork()) == -1 )
 	    error("fork");        
     
