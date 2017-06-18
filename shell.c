@@ -142,33 +142,47 @@ int main(int argc, char * argv[])
     int pipefd[2];
     int in = 0;
     int i;
-    
+    pid_t p;
     while(1)
     {
-        init_argv(newargv);
-        get_comm(command);
-        look_for_sym(command, '<', inRedirect);
-        look_for_sym(command, '>', outRedirect);
-        
-        while( look_for_pipe(command) == 1)
-		;
-        
-	cmds[0] = command;
-        if(strlen(inRedirect) > 0)
-	    in = open(inRedirect, O_RDONLY);
-	for(i = 0; i < num_proc -1; ++i)
+	p = fork();
+	switch(p)
 	{
-	    pipe(pipefd);
-	    make_proc(in, pipefd[1], cmds[i]);
-	    close(pipefd[1]);
-	    in = pipefd[0];
+	    case 0:
+        	init_argv(newargv);
+        	get_comm(command);
+        	look_for_sym(command, '<', inRedirect);
+        	look_for_sym(command, '>', outRedirect);
+        
+        	while( look_for_pipe(command) == 1)
+			;
+        
+		cmds[0] = command;
+        	if(strlen(inRedirect) > 0)
+	    	    in = open(inRedirect, O_RDONLY);
+		for(i = 0; i < num_proc -1; ++i)
+		{
+	    	    pipe(pipefd);
+	    	    make_proc(in, pipefd[1], cmds[i]);
+	    	    close(pipefd[1]);
+	    	    in = pipefd[0];
+		}
+		if(in != 0)
+	    	    dup2(in, 0);
+        	output_redir(outRedirect); 	
+		init_argv(newargv);
+		parse_command(cmds[i], newargv);
+		execvp(newargv[0], newargv);
+		break;
+	    case -1:
+		error("first fork");
+		break;
+	    default:
+		waitpid(-1,NULL,0);
+		strcpy(inRedirect, "");
+		strcpy(outRedirect, "");
+		init_argv(newargv);
 	}
-	if(in != 0)
-	    dup2(in, 0);
-        output_redir(outRedirect); 	
-	init_argv(newargv);
-	parse_command(cmds[i], newargv);
-	execvp(newargv[0], newargv);
     }
 
     return 0;
