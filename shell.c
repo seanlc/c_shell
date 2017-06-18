@@ -30,6 +30,7 @@ void init_argv(char * newargv[])
 	newargv[i] = NULL;
 }
 
+
 void print_cmds()
 {
     printf("value of cmds: \n");
@@ -49,6 +50,37 @@ void parse_command(char * command, char * newargv[])
     }
 }
 
+int make_proc(int in, int out, char * cmd)
+{
+    pid_t p;
+    char * newargv[ARG_MAX];
+    p = vfork();
+
+    switch(p)
+    {
+	case -1:
+	    error("fork");
+	    break;
+	case 0:
+	    init_argv(newargv);
+	    parse_command(cmd, newargv);
+	    if(in != 0)
+	    {
+		if((dup2(in,0)) == -1)
+		    error("dup2");
+		close(in);
+	    }
+	    if(out != 1)
+	    {
+		if((dup2(out,1)) == -1)
+		    error("dup2");
+		close(out);
+	    }
+	    return execvp(newargv[0], newargv);
+	    break;
+    }
+    return p;
+}
 void get_comm(char * buf)
 {
     printf("#");
