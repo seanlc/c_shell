@@ -120,18 +120,6 @@ void look_for_sym(char * str, char c, char * fileName)
         strcpy(fileName, fname);
     }
 }
-void input_redir(char inRedirect[256])
-{
-    int fd;
-    if(strlen(inRedirect) > 0)
-    {
-	if((fd = open(inRedirect, O_RDONLY)) == -1  )
-	    error("open before input redirection");
-	if((dup2(fd,0)) == -1)
-	    error("dup2 input redirection");
-	close(fd);	    
-    }
-}
 void output_redir(char outRedirect[256])
 {
     int fd;
